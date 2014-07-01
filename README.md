@@ -1,41 +1,87 @@
-iron-router-issue-678
-=====================
+<h4>Problem description</h4>
 
-How to reproduce Iron Router issue #678
-
-
-<h4>Steps To Reproduce</h4>
-
-1. $ git clone https://github.com/steph643/iron-router-issue-678/
-2. Go to folder iron-router-issue-678 and run meteor
-3. Launch the browser on http://localhost:3000/page1
-4. Click on 'Go to page2'
-5. Click on 'Go to page1'
-
-
-<h4>Program Output</h4>
-
-With untouched code, data is not ready (as expected):
+I use a reactive subscribe like this:
 
 ```
-In page 1, myCollection1Cursor = WARNING, NULL OR UNDEFINED!!!
-In page 1, myCollection1Cursor = 1,2,3
-In page 2, myCollection2Cursor = WARNING, NULL OR UNDEFINED!!!
-In page 2, myCollection2Cursor = 4,5,6
-In page 1, myCollection1Cursor = WARNING, NULL OR UNDEFINED!!!
-In page 1, myCollection1Cursor = 1,2,3 
+this.route('page1',
+    {
+    waitOn: function () 
+        { 
+        return Meteor.subscribe('myCollection', Session.get('positiveOnly')); 
+        },
+    });
 ```
-After uncommenting the 2 'action' lines, data is ready (as expected):
+My publish function looks like this:
+
 ```
-In page 1, myCollection1Cursor = 1,2,3
-In page 2, myCollection2Cursor = 4,5,6
-In page 1, myCollection1Cursor = 1,2,3
+Meteor.publish('myCollection', function(positiveOnly) 
+    {
+    return MyCollection.find( positiveOnly ? { value: { $gte: 0 } } : {} );
+    });
 ```
-After commenting back the 2 'action' lines and uncommenting the 2 'onBeforeAction' lines, unexpected behavior:
+This works fine: when the Session value positiveOnly changes, MyCollection is updated with the correct values and my template is re-rendered.
+
+The issue occurs when I try to wait for data to be ready before rendering my template.
+
+This works :
+
 ```
-In page 1, myCollection1Cursor = 1,2,3
-In page 1, myCollection1Cursor = WARNING, NULL OR UNDEFINED!!!
-In page 2, myCollection2Cursor = 4,5,6
-In page 2, myCollection2Cursor = WARNING, NULL OR UNDEFINED!!!
-In page 1, myCollection1Cursor = 1,2,3 
+this.route('page1',
+    {
+    action: function()
+        {
+        if (this.ready())
+            this.render();
+        }
+    });
+
+this.route('page1',
+    {
+    onBeforeAction: function(pause)
+        {
+        if (this.ready())
+            return;
+        pause();
+        },
+    });
 ```
+This does not work :
+Rendering gets stucked in the 'loading' template and never comes back to default rendering:
+
+```
+this.route('page1',
+    {
+    action: function()
+        {
+        if (this.ready())
+            this.render();
+        else
+            this.render('loading');
+        }
+    });
+
+this.route('page1',
+    {
+    onBeforeAction: function(pause)
+        {
+        if (this.ready())
+            return;
+        pause();
+        this.render('loading');
+        },
+    });
+```
+The same problem occurs when using the built-in Router.onBeforeAction('loading') hook.
+
+I will post a GitHub repo to reproduce the issue.
+
+<h4>How to reproduce</h4>
+
+1. $ git clone https://github.com/steph643/iron-router-issue-702/
+2. Go to folder iron-router-issue-702 and run meteor
+3. Launch the browser on http://localhost:3000/page1 and have a look at the console: it shows empty collection content (data not ready), then correct collection content -2,-1,0,1,2
+4. Click the 'Toggle positive Only' button: it shows updated collection content 0,1,2
+5. Open main.js, uncomment section SOLUTION 1 and go to step 3 again: as expected, the empty collection does not show up, because we have waited for data to be ready before rendering the template.
+6. Now uncomment lines 20 and 21 and go to step 3 again: rendering gets stucked on the 'loading' template.
+7. Go to step 5 and do the same with SOLUTION 2 instead of SOLUTION 1: the same problem occurs.
+8. You can try with the built-in `Router.onBeforeAction('loading')` hook: the same problem occurs.
