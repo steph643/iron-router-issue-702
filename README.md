@@ -1,3 +1,17 @@
+iron-router-issue-702
+=====================
+
+<h4>Step to reproduce</h4>
+
+1. $ git clone https://github.com/steph643/iron-router-issue-702/
+2. Go to folder iron-router-issue-702 and run meteor
+3. Launch the browser on http://localhost:3000/page1 and have a look at the console: it shows empty collection content (data not ready), then correct collection content -2,-1,0,1,2
+4. Click the 'Toggle positive Only' button: it shows updated collection content 0,1,2
+5. Open main.js, uncomment section SOLUTION 1 and go to step 3 again: as expected, the empty collection does not show up, because we have waited for data to be ready before rendering the template.
+6. Now uncomment lines 20 and 21 and go to step 3 again: rendering gets stucked on the 'loading' template.
+7. Go to step 5 and do the same with SOLUTION 2 instead of SOLUTION 1: the same problem occurs.
+8. You can try with the built-in `Router.onBeforeAction('loading')` hook: the same problem occurs.
+
 <h4>Problem description</h4>
 
 I use a reactive subscribe like this:
@@ -71,17 +85,4 @@ this.route('page1',
         },
     });
 ```
-The same problem occurs when using the built-in Router.onBeforeAction('loading') hook.
-
-I will post a GitHub repo to reproduce the issue.
-
-<h4>How to reproduce</h4>
-
-1. $ git clone https://github.com/steph643/iron-router-issue-702/
-2. Go to folder iron-router-issue-702 and run meteor
-3. Launch the browser on http://localhost:3000/page1 and have a look at the console: it shows empty collection content (data not ready), then correct collection content -2,-1,0,1,2
-4. Click the 'Toggle positive Only' button: it shows updated collection content 0,1,2
-5. Open main.js, uncomment section SOLUTION 1 and go to step 3 again: as expected, the empty collection does not show up, because we have waited for data to be ready before rendering the template.
-6. Now uncomment lines 20 and 21 and go to step 3 again: rendering gets stucked on the 'loading' template.
-7. Go to step 5 and do the same with SOLUTION 2 instead of SOLUTION 1: the same problem occurs.
-8. You can try with the built-in `Router.onBeforeAction('loading')` hook: the same problem occurs.
+The same problem occurs when using the built-in `Router.onBeforeAction('loading')` hook.
